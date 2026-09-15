@@ -6,155 +6,139 @@ public partial class World : Node2D
     public const int TileSize = 16;
     public const int MapWidth = 80;
     public const int MapHeight = 48;
-    public static readonly Rect2 WorldRect = new(0, 0, MapWidth * TileSize, MapHeight * TileSize);
+    public const int WorldWidth = MapWidth * TileSize;
+    public const int WorldHeight = MapHeight * TileSize;
 
-    private readonly Random _random = new();
-    private Node2D _groundLayer = null!;
-    private Node2D _grassLayer = null!;
-    private Node2D _decorationLayer = null!;
-    private Node2D _collisionLayer = null!;
+    private readonly Random _random = new(20260915);
     private Player _player = null!;
+    private readonly Vector2[] _trees = new Vector2[18];
+    private readonly Vector2[] _rocks = new Vector2[8];
 
     public override void _Ready()
     {
-        _groundLayer = new Node2D { Name = "GroundLayer", ZIndex = 0 };
-        _grassLayer = new Node2D { Name = "GrassLayer", ZIndex = 2 };
-        _decorationLayer = new Node2D { Name = "DecorationLayer", ZIndex = 3 };
-        _collisionLayer = new Node2D { Name = "CollisionLayer", ZIndex = 4 };
-        AddChild(_groundLayer);
-        AddChild(_grassLayer);
-        AddChild(_decorationLayer);
-        AddChild(_collisionLayer);
-
-        DrawGround();
-        CreatePathsAndObstacles();
-        CreateGrassPatches();
-        CreatePlayer();
+        ZIndex = 0;
+        BuildDecorations();
+        BuildCollisions();
+        _player = new Player { Name = "Player", Position = new Vector2(40 * TileSize, 24 * TileSize) };
+        AddChild(_player);
+        QueueRedraw();
     }
 
-    private void DrawGround()
+    private void BuildDecorations()
     {
-        var ground = new GroundVisual { Name = "Ground" };
-        _groundLayer.AddChild(ground);
+        for (int i = 0; i < _trees.Length; i++)
+            _trees[i] = RandomMapPosition(70);
+
+        for (int i = 0; i < _rocks.Length; i++)
+            _rocks[i] = RandomMapPosition(50);
     }
 
-    private void CreatePathsAndObstacles()
+    private Vector2 RandomMapPosition(int safeRadius)
     {
-        // A simple winding path gives the field a readable RPG-map silhouette.
-        for (int y = 4; y < MapHeight - 4; y++)
+        Vector2 p;
+        Vector2 center = new(40 * TileSize, 24 * TileSize);
+        do
         {
-            int x = 8 + (int)(Math.Sin(y * 0.28) * 5);
+            p = new Vector2(_random.Next(3, MapWidth - 3) * TileSize + 8, _random.Next(3, MapHeight - 3) * TileSize + 8);
+        } while (p.DistanceTo(center) < safeRadius);
+        return p;
+    }
+
+    private void BuildCollisions()
+    {
+        foreach (Vector2 p in _trees)
+            AddObstacle(p + new Vector2(0, 8), new Vector2(9, 6));
+
+        foreach (Vector2 p in _rocks)
+            AddObstacle(p, new Vector2(7, 5));
+    }
+
+    private void AddObstacle(Vector2 position, Vector2 halfSize)
+    {
+        var body = new StaticBody2D { Position = position };
+        body.AddChild(new CollisionShape2D
+        {
+            Shape = new RectangleShape2D { Size = halfSize * 2f }
+        });
+        AddChild(body);
+    }
+
+    public override void _Draw()
+    {
+        // Grass base.
+        DrawRect(new Rect2(0, 0, WorldWidth, WorldHeight), new Color("#78ad50"));
+
+        // Subtle 16x16 tile texture.
+        for (int y = 0; y < MapHeight; y++)
+        for (int x = 0; x < MapWidth; x++)
+        {
+            if ((x * 17 + y * 31) % 7 == 0)
+                DrawRect(new Rect2(x * TileSize + 3, y * TileSize + 5, 2, 2), new Color("#6b9f49"));
+        }
+
+        DrawPath();
+        DrawTallGrass();
+
+        foreach (Vector2 p in _rocks)
+            DrawRock(p);
+
+        foreach (Vector2 p in _trees)
+            DrawTree(p);
+    }
+
+    private void DrawPath()
+    {
+        for (int y = 0; y < MapHeight; y++)
+        {
+            int x = 9 + (int)Math.Round(Math.Sin(y * 0.24) * 4);
             for (int i = 0; i < 5; i++)
             {
-                var tile = new PathTile { Position = new Vector2((x + i) * TileSize, y * TileSize) };
-                _groundLayer.AddChild(tile);
-            }
-        }
-
-        // Trees/rocks are deliberately positioned away from the starting point.
-        for (int i = 0; i < 26; i++)
-        {
-            Vector2 pos;
-            do
-            {
-                pos = new Vector2(_random.Next(2, MapWidth - 2) * TileSize + 8, _random.Next(2, MapHeight - 2) * TileSize + 8);
-            } while (pos.DistanceTo(new Vector2(40 * TileSize, 24 * TileSize)) < 110f);
-
-            if (i % 4 == 0)
-            {
-                var rock = new Rock { Position = pos };
-                _decorationLayer.AddChild(rock);
-                AddCollision(pos, new Vector2(11, 9));
-            }
-            else
-            {
-                var tree = new Tree { Position = pos };
-                _decorationLayer.AddChild(tree);
-                AddCollision(pos + new Vector2(0, 9), new Vector2(11, 7));
+                Rect2 r = new Rect2((x + i) * TileSize, y * TileSize, TileSize, TileSize);
+                DrawRect(r, new Color("#c6a46a"));
+                DrawRect(new Rect2(r.Position + new Vector2(3, 4), new Vector2(2, 2)), new Color("#b18e5b"));
             }
         }
     }
 
-    private void CreateGrassPatches()
+    private void DrawTallGrass()
     {
-        // Dense patches rather than isolated blades: this is the foundation for encounter grass later.
         var patches = new (int x, int y, int w, int h)[]
         {
-            (20, 6, 14, 10), (45, 5, 17, 12), (58, 26, 14, 13), (15, 30, 18, 9), (39, 35, 13, 8)
+            (20, 6, 14, 10), (45, 5, 17, 12), (58, 27, 14, 13), (15, 30, 18, 9), (39, 35, 13, 8)
         };
 
         foreach (var patch in patches)
+        for (int y = 0; y < patch.h; y++)
+        for (int x = 0; x < patch.w; x++)
         {
-            for (int y = 0; y < patch.h; y++)
-            for (int x = 0; x < patch.w; x++)
-            {
-                var grass = new TallGrass
-                {
-                    Position = new Vector2((patch.x + x) * TileSize + 8, (patch.y + y) * TileSize + 11)
-                };
-                _grassLayer.AddChild(grass);
-            }
+            float px = (patch.x + x) * TileSize + 8;
+            float py = (patch.y + y) * TileSize + 13;
+            DrawLine(new Vector2(px - 5, py), new Vector2(px - 2, py - 10), new Color("#397b38"), 2);
+            DrawLine(new Vector2(px, py), new Vector2(px + 1, py - 13), new Color("#579746"), 2);
+            DrawLine(new Vector2(px + 5, py), new Vector2(px + 3, py - 9), new Color("#2f6e32"), 2);
         }
     }
 
-    private void CreatePlayer()
+    private void DrawTree(Vector2 p)
     {
-        _player = new Player { Name = "Player", Position = new Vector2(40 * TileSize, 24 * TileSize) };
-        AddChild(_player);
-        _player.MoveAndSlide();
+        // Trunk.
+        DrawRect(new Rect2(p.X - 4, p.Y + 2, 8, 16), new Color("#76502f"));
+        // Layered canopy for a simple pixel-RPG silhouette.
+        DrawCircle(p + new Vector2(0, -8), 17, new Color("#285f35"));
+        DrawCircle(p + new Vector2(-10, -3), 11, new Color("#347540"));
+        DrawCircle(p + new Vector2(10, -3), 11, new Color("#347540"));
+        DrawCircle(p + new Vector2(0, -16), 11, new Color("#40834a"));
+        DrawRect(new Rect2(p.X - 10, p.Y - 5, 20, 4), new Color("#4c8d4c"));
     }
 
-    private void AddCollision(Vector2 position, Vector2 size)
+    private void DrawRock(Vector2 p)
     {
-        var body = new StaticBody2D { Position = position };
-        var shape = new CollisionShape2D { Shape = new RectangleShape2D { Size = size * 2f } };
-        body.AddChild(shape);
-        _collisionLayer.AddChild(body);
-    }
-
-    public partial class GroundVisual : Node2D
-    {
-        public override void _Ready() => QueueRedraw();
-
-        public override void _Draw()
+        var points = new[]
         {
-            DrawRect(World.WorldRect, new Color("#78ad50"));
-            for (int y = 0; y < MapHeight; y++)
-            for (int x = 0; x < MapWidth; x++)
-            {
-                var shade = ((x * 17 + y * 31) % 5 == 0) ? new Color("#72a64b") : new Color("#7db557");
-                DrawRect(new Rect2(x * TileSize, y * TileSize, TileSize, TileSize), shade);
-            }
-        }
-    }
-
-    public partial class PathTile : Node2D
-    {
-        public override void _Ready() => QueueRedraw();
-        public override void _Draw() => DrawRect(new Rect2(-8, -8, 16, 16), new Color("#c7a968"));
-    }
-
-    public partial class Tree : Node2D
-    {
-        public override void _Ready() => QueueRedraw();
-        public override void _Draw()
-        {
-            DrawRect(new Rect2(-3, 0, 6, 13), new Color("#765132"));
-            DrawCircle(new Vector2(0, -5), 14, new Color("#2f6d3b"));
-            DrawCircle(new Vector2(-7, -2), 9, new Color("#397a42"));
-            DrawCircle(new Vector2(7, -2), 9, new Color("#397a42"));
-            DrawCircle(new Vector2(0, -11), 9, new Color("#438647"));
-        }
-    }
-
-    public partial class Rock : Node2D
-    {
-        public override void _Ready() => QueueRedraw();
-        public override void _Draw()
-        {
-            var points = new[] { new Vector2(-10, 7), new Vector2(-7, -5), new Vector2(1, -9), new Vector2(10, -3), new Vector2(8, 7) };
-            DrawColoredPolygon(points, new Color("#777b72"));
-            DrawLine(new Vector2(-5, -3), new Vector2(2, -6), new Color("#a5a79b"), 2);
-        }
+            p + new Vector2(-10, 6), p + new Vector2(-7, -5), p + new Vector2(0, -9),
+            p + new Vector2(9, -3), p + new Vector2(8, 6), p + new Vector2(0, 9)
+        };
+        DrawColoredPolygon(points, new Color("#777c74"));
+        DrawLine(p + new Vector2(-5, -3), p + new Vector2(2, -6), new Color("#a8aaa1"), 2);
     }
 }
