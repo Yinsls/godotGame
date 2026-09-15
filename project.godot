@@ -3,7 +3,7 @@
 config_version=5
 
 [application]
-config/name="Grass Walk Demo"
+config/name="Pocket Grass Adventure"
 run/main_scene="res://Main.tscn"
 
 [display]
@@ -16,7 +16,7 @@ window/stretch/mode="canvas_items"
 [rendering]
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
-environment/defaults/default_clear_color=Color(0.08, 0.18, 0.08, 1)
+environment/defaults/default_clear_color=Color(0.18, 0.30, 0.16, 1)
 
 [input]
 move_up={"deadzone": 0.5, "events": [Object(InputEventKey,"physical_keycode":87), Object(InputEventKey,"physical_keycode":4194320)]}
