@@ -1,26 +1,25 @@
 # Pocket Grass Adventure
 
-Godot 4 + C# 2D RPG prototype inspired by classic top-down monster-catching RPGs.
+A small original 2D pixel-RPG prototype built for Godot 4.7.
 
-## Current prototype
+## Current build
 
-- 16px tile-oriented world
-- Four-direction player movement with WASD / arrow keys
-- Camera following the player
-- Ground, grass, decoration and collision layers
-- Procedurally generated paths, trees and rocks
-- Dense tall-grass patches
-- Localized grass rustling when the player walks through grass
-- Simple pixel-art-style placeholder character without external assets
+- Standalone GDScript runtime: the playable scene does not depend on .NET/C#.
+- Original SVG character material with idle, running, attack and defense frames.
+- Four-direction movement with WASD / arrow keys.
+- J: attack. K: defend.
+- Camera follows the player.
+- Large field with dirt path, trees, rocks and dense tall-grass patches.
+- Tall grass reacts locally when the player walks through it.
 
-## Structure
+## Controls
 
-```text
-Main.tscn
-scripts/
-├── world/World.cs
-├── player/Player.cs
-└── grass/TallGrass.cs
-```
+| Key | Action |
+|---|---|
+| WASD / Arrow keys | Move |
+| J | Attack |
+| K | Defend |
 
-The procedural visuals are intentionally placeholders. The next stage can replace them with real pixel-art tiles and sprite sheets while keeping the gameplay architecture intact.
+## Direction
+
+This repository intentionally starts with a dependency-free playable foundation. The next layer is a real TileSet/TileMap map, richer four-direction sprite sheets, frame-based AnimationPlayer/AnimatedSprite2D animations, NPCs, dialogue, map transitions and encounters.
