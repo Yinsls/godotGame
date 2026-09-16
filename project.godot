@@ -1,5 +1,4 @@
-; Pocket Grass Adventure - Godot 4.7
-; Standalone GDScript prototype. No .NET dependency is required to run the game.
+; Pocket Grass Adventure - standalone Godot build
 config_version=5
 
 [application]
